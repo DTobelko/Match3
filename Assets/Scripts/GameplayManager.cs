@@ -19,7 +19,7 @@ public class GameplayManager
     private int holesCount;
     private float cellSize;
     private int chipsCount;
-    private Grid grid;  
+    private Grid grid;
 
     private int highlightedChip = -1;
 
@@ -39,7 +39,7 @@ public class GameplayManager
     private int Score;
 
     public IntScoreEvent ScoreEvent;
-    public UnityEvent FieldReady, MoveStarted, MoveFinished;
+    public UnityEvent FieldReady, MoveStarted, MoveFinished, NoPossibleMove, MixForMoveDone;
 
 
     public GameplayManager(IVisual _vis, SoundManager _soundManager)
@@ -54,7 +54,9 @@ public class GameplayManager
         FieldReady = new UnityEvent();
         MoveStarted = new UnityEvent();
         MoveFinished = new UnityEvent();
-        
+        NoPossibleMove = new UnityEvent();
+        MixForMoveDone = new UnityEvent();
+
     }
 
     public void CreateField(LevelSO levelSO)
@@ -107,10 +109,7 @@ public class GameplayManager
     public void InstantiateChips(LevelSO _levelSO)
     {
         // разместить на поле фишки заданных цветов случайным образом, без трёх в ряд и с возможностью хода, не занимая дырки
-        // массив фишек - это массив, похожий на уже меющийся Grid, но вместо ячейки - подвижная фишка
 
-        // одномерный массив фишек
-        // создаём массив фишек
         levelSO = _levelSO;
 
         chipsCount = gridWidth * gridHeight - holesCount;
@@ -127,20 +126,14 @@ public class GameplayManager
         {
             MixChips();
             LocateChips();
-        } while (CheckMatch());
+        } while (CheckMatch() || !CanMove());
 
         fieldReady = true;
 
+
         vis.DisplayChips(chips, levelSO);
 
-        /*  if (CanMove())
-                Debug.Log("есть ход");
-            else
-                Debug.Log("нет хода");*/
-
-
         FieldReady?.Invoke();
-
     }
 
     bool CheckMatch()
@@ -163,27 +156,27 @@ public class GameplayManager
 
     void MarkChips()
     {
-       
+
         for (int y = 0; y < gridHeight; y++)
-                for (int x = 0; x < gridWidth; x++)
-                {
-                    if (mark[x, y])
-                    {
-                        grid.gridCells[x, y].chipType = -1; // удаляем
-
-                    }
-                }
-
-            for (int i = 0; i < chips.Length; i++)
+            for (int x = 0; x < gridWidth; x++)
             {
-
-                if (grid.gridCells[chips[i].x, chips[i].y].chipType == -1)
+                if (mark[x, y])
                 {
-                    chips[i].chipType = -1;
+                    grid.gridCells[x, y].chipType = -1; // удаляем
 
                 }
             }
-            doSwap = false;
+
+        for (int i = 0; i < chips.Length; i++)
+        {
+
+            if (grid.gridCells[chips[i].x, chips[i].y].chipType == -1)
+            {
+                chips[i].chipType = -1;
+
+            }
+        }
+        doSwap = false;
 
     }
 
@@ -199,15 +192,18 @@ public class GameplayManager
         for (int x = x0, y = y0; GetCell(x, y) == chipType; x += sx, y += sy) // считаем, сколько фишек того же типа стоят в ряд
         {
             countMatches++;
-        } 
+        }
 
         if (countMatches < 3)
             return 0;
 
-        if (fieldReady) AddScore(countMatches);
+        if (fieldReady)
+            AddScore(countMatches);
+
+
 
         // пометим совпавшиее фишки
-        for (int x = x0, y = y0; GetCell(x, y) == chipType; x += sx, y += sy) 
+        for (int x = x0, y = y0; GetCell(x, y) == chipType; x += sx, y += sy)
         {
             mark[x, y] = true;
         }
@@ -286,48 +282,99 @@ public class GameplayManager
     // есть ли ход
     private bool CanMove()
     {
-        int abilities = 0;
+        // виртуально проверим все возможные ходы, если хотя бы после одного хода есть матч3, то true, иначе - false
+        List<PossibleMove> possibleMoveList = GetAllPossibleMoves();
+
+        if (possibleMoveList.Count == 0)
+            return false;
+        else
+            return true;
+    }
+
+    public List<PossibleMove> GetAllPossibleMoves()
+    {
+        List<PossibleMove> allPossibleMovesList = new List<PossibleMove>();
+
         for (int y = 0; y < gridHeight; y++)
+        {
             for (int x = 0; x < gridWidth; x++)
             {
-                abilities += CheckLineHasMоve(x, y, 1, 0);
-                abilities += CheckLineHasMоve(x, y, 0, 1);
+
+                List<PossibleMove> testPossibleMoveList = new List<PossibleMove>();
+                testPossibleMoveList.Add(new PossibleMove(x, y, x - 1, y + 0));
+                testPossibleMoveList.Add(new PossibleMove(x, y, x + 1, y + 0));
+                testPossibleMoveList.Add(new PossibleMove(x, y, x + 0, y + 1));
+                testPossibleMoveList.Add(new PossibleMove(x, y, x + 0, y - 1));
+
+                for (int i = 0; i < testPossibleMoveList.Count; i++)
+                {
+                    PossibleMove possibleMove = testPossibleMoveList[i];
+
+                    bool skipPossibleMove = false;
+
+                    for (int j = 0; j < allPossibleMovesList.Count; j++)
+                    {
+                        PossibleMove tmpPossibleMove = allPossibleMovesList[j];
+                        if (tmpPossibleMove.startX == possibleMove.startX &&
+                            tmpPossibleMove.startY == possibleMove.startY &&
+                            tmpPossibleMove.endX == possibleMove.endX &&
+                            tmpPossibleMove.endY == possibleMove.endY)
+                        {
+                            // уже тестировали это движение
+                            skipPossibleMove = true;
+                            break;
+                        }
+                        if (tmpPossibleMove.startX == possibleMove.endX &&
+                            tmpPossibleMove.startY == possibleMove.endY &&
+                            tmpPossibleMove.endX == possibleMove.startX &&
+                            tmpPossibleMove.endY == possibleMove.startY)
+                        {
+                            // уже тестировали это движение
+                            skipPossibleMove = true;
+                            break;
+                        }
+                    }
+
+                    if (skipPossibleMove)
+                    {
+                        continue;
+                    }
+
+                    TestSwapChips(possibleMove.startX, possibleMove.startY, possibleMove.endX, possibleMove.endY); // меняем фишки местами
+
+                    if (CheckMatch())
+                    {
+                        allPossibleMovesList.Add(possibleMove);
+                    }
+
+                    TestSwapChips(possibleMove.startX, possibleMove.startY, possibleMove.endX, possibleMove.endY); // меняем обратно
+                }
+
             }
+        }
 
-        if (abilities > 0)
-            return true;
-
-        return false;
+        return allPossibleMovesList;
     }
 
-    int CheckLineHasMоve(int x0, int y0, int sx, int sy)
+    void TestSwapChips(int startX, int startY, int endX, int endY)
     {
-        int chipType = GetCell(x0, y0);
-        if (chipType == -1) return 0;
+        if (GetCell(startX, startY) == -1 || GetCell(endX, endY) == -1)
+            return;
 
-        int countMatches = 0;
+        int tempType = grid.gridCells[startX, startY].chipType;
+        grid.gridCells[startX, startY].chipType = grid.gridCells[endX, endY].chipType;
+        grid.gridCells[endX, endY].chipType = tempType;
 
-        for (int x = x0, y = y0; GetCell(x, y) == chipType; x += sx, y += sy) // считаем, сколько фишек того же типа стоят в ряд
-        {
-            countMatches++;
-        }
+        int tempInd = grid.gridCells[startX, startY].chipInd;
+        grid.gridCells[startX, startY].chipInd = grid.gridCells[endX, endY].chipInd;
+        grid.gridCells[endX, endY].chipInd = tempInd;
 
-        if (countMatches == 2) // нашли две фишки одного типа друг за другом, далее проверить, есть ли фишка через одну до/ после них, либо на соседних строках/столбцах для возможного хода
-        {
-            if (GetCell(x0 + 3, y0) == chipType)
-                return 1;
-        }
-
-
-
-        return 0;
     }
-
 
 
     public void ChipSelected(int chipIndex)
     {
-        doSwap = true; 
+        doSwap = true;
 
         if (highlightedChip == chipIndex)
             return;
@@ -345,32 +392,34 @@ public class GameplayManager
         }
 
         // если тап по нужному месту - передвигаем фишки
-        if ( ( chips[chipIndex].x == chips[highlightedChip].x && Math.Abs(chips[chipIndex].y - chips[highlightedChip].y) == 1 )
+        if ((chips[chipIndex].x == chips[highlightedChip].x && Math.Abs(chips[chipIndex].y - chips[highlightedChip].y) == 1)
             ||
             (chips[chipIndex].y == chips[highlightedChip].y && Math.Abs(chips[chipIndex].x - chips[highlightedChip].x) == 1)
             )
         {
             MoveStarted?.Invoke();
-            SwapChips(highlightedChip, chipIndex, true);
+            SwapChips(highlightedChip, chipIndex, true, false);
             soundManager.PlaySoundEffect(SoundEffect.ChipSwap);
             chipToSwapOne = highlightedChip;
             chipToSwapTwo = chipIndex;
             vis.DestroyLightning();
-           
+
             highlightedChip = -1;
         }
 
-        else 
+        else
         {
             // если тап не по нужному месту - подсветить новую фишку
             highlightedChip = chipIndex;
-            vis.DisplayLightning(chips[chipIndex].x,  chips[chipIndex].y);
+            vis.DisplayLightning(chips[chipIndex].x, chips[chipIndex].y);
         }
     }
 
+  
 
-    void SwapChips(int highlightedChip, int chipIndex, bool doCheck)
+   void SwapChips(int highlightedChip, int chipIndex, bool doCheck, bool quickly)
     {
+  
         int x = chips[highlightedChip].x;
         int y = chips[highlightedChip].y;
         chips[highlightedChip].x = chips[chipIndex].x;
@@ -384,12 +433,12 @@ public class GameplayManager
         grid.gridCells[chips[highlightedChip].x, chips[highlightedChip].y].chipInd = highlightedChip;
         grid.gridCells[chips[chipIndex].x, chips[chipIndex].y].chipInd = chipIndex;
 
-        vis.SwapChips(chips, highlightedChip, chipIndex, doCheck);
+        vis.SwapChips(chips, highlightedChip, chipIndex, doCheck, quickly);
     }
 
-    void OnMoveEnded(object sender, EventArgs e)        
+    void OnMoveEnded(object sender, EventArgs e)
     {
-        if (allChipsHere && CheckMatch() )
+        if (allChipsHere && CheckMatch())
         // удалить матч 3, начислить очки, вывести новые фишки 
         {
             MarkChips();
@@ -400,24 +449,58 @@ public class GameplayManager
         else if (doSwap)
         {
             // здесь запустить свап без последующей проверки
-            SwapChips(chipToSwapOne, chipToSwapTwo, false);
+            SwapChips(chipToSwapOne, chipToSwapTwo, false, false);
             MoveFinished?.Invoke();
+
+            fieldReady = false;
+
+            while (!CanMove() || CheckMatch())
+            {
+                MixAndLocate();
+            }
+
+            fieldReady = true;
         }
         else
         {
+            fieldReady = false;
+
+            while (!CanMove() || CheckMatch())
+            {
+                MixAndLocate();
+            }
+
+            fieldReady = true;
+
             MoveFinished?.Invoke();
         }
     }
 
 
+    void MixAndLocate()
+    {
+        NoPossibleMove?.Invoke();
+
+        for (int i = chips.Length - 1; i >= 1; i--)
+        {
+            int j = UnityEngine.Random.Range(0, i + 1);
+
+            if (i != j)
+            {
+                SwapChips(i, j, false, true); 
+            }
+        }
+
+        MixForMoveDone?.Invoke();
+    }
+
+  
+
     void OnDestroyEnded(object sender, EventArgs e)
     {
         allChipsHere = false;
-
         ReloadDisabledChips();
-
         MoveChipsUp();
-    
     }
 
 
@@ -449,7 +532,6 @@ public class GameplayManager
             }
 
             // второй цикл - сдвигаем все фишки визуально, в том числе неактивные - новые
-            // как найти неактивные новые фишки
             for (int y = gridHeight - 1; y >= 0; y--)
             {
                 // сдвигаем одновременно новые фишки на пустые места и затем все фишки визуально
@@ -459,8 +541,7 @@ public class GameplayManager
                 {
                     if (!grid.gridCells[x, y].isHole)
                     {
-                        // пока ещё пустую - заполняем из очереди
-                        // взять из очереди
+
                         var tempChip = newChips.Dequeue();
                         int tempInd = GetChipIndex(tempChip);
 
@@ -527,7 +608,7 @@ public class GameplayManager
     }
 
 
-    void ReloadDisabledChips() // фишкам, кооторые удалены с поля, назначим новые координаты для дальнейшего респавна
+    void ReloadDisabledChips() // фишкам, которые удалены с поля, назначим новые координаты для дальнейшего респавна
     {
 
         for (int x = 0; x < gridWidth; x++)
@@ -554,4 +635,24 @@ public class GameplayManager
 
 }
 
+
+public class PossibleMove
+{
+
+    public int startX;
+    public int startY;
+    public int endX;
+    public int endY;
+ 
+    public PossibleMove() { }
+
+    public PossibleMove(int startX, int startY, int endX, int endY)
+    {
+        this.startX = startX;
+        this.startY = startY;
+        this.endX = endX;
+        this.endY = endY;
+    }
+
+}
 

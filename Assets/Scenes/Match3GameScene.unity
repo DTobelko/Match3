@@ -773,6 +773,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   gameManager: {fileID: 2138317014}
   ScoreText: {fileID: 1884858634}
+  NotificationPanel: {fileID: 124842121}
 --- !u!4 &1196506788
 Transform:
   m_ObjectHideFlags: 0
@@ -821,7 +822,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 2, y: -15}
+  m_AnchoredPosition: {x: 213, y: -13}
   m_SizeDelta: {x: 605, y: 54.5}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1499041432
@@ -855,8 +856,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: "\u041D\u0435\u0442 \u0445\u043E\u0434\u043E\u0432, \u043F\u0435\u0440\u0435\u043C\u0435\u0448\u0438\u0432\u0430\u0435\u043C
-    \u0444\u0438\u0448\u043A\u0438..."
+  m_Text: "\u041D\u0415\u0422 \u0425\u041E\u0414\u0410"
 --- !u!222 &1499041433
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -1050,6 +1050,15 @@ MonoBehaviour:
   visual: {fileID: 840804956}
   soundManager: {fileID: 788637169}
   inputManager: {fileID: 1806845877}
+  ScoreEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  NoPossibleMove:
+    m_PersistentCalls:
+      m_Calls: []
+  MixForMoveDone:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!4 &2138317015
 Transform:
   m_ObjectHideFlags: 0

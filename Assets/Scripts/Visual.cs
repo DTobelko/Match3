@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Events;
-using UnityEngine.UI;
+
+
 
 public class Visual : MonoBehaviour, IVisual
 {
@@ -28,7 +27,6 @@ public class Visual : MonoBehaviour, IVisual
     [SerializeField] private GameObject chipPrefab;
     [SerializeField] private GameObject lightPrefab;
 
-    Chip[] chipsTest;
     LevelSO levelSO;
 
     public event EventHandler MoveEnded;
@@ -62,7 +60,6 @@ public class Visual : MonoBehaviour, IVisual
     public void DisplayChips(Chip[] chips, LevelSO _levelSO)
     {
         levelSO = _levelSO;
-        chipsTest = chips;
 
         int counter = 0;
         Vector3 position = new Vector3();
@@ -74,18 +71,15 @@ public class Visual : MonoBehaviour, IVisual
                 {
                     position = new Vector3(x * VisualGrid.cellSize, y * VisualGrid.cellSize);
 
-                    chipSO = levelSO.chipList[chips[counter].chipType];
-
-                    chips[counter].GO = Instantiate(chipPrefab, position, Quaternion.identity);
-
-                    chips[counter].GO.name = "Chip" + counter;
-
-                    chips[counter].GO.GetComponent<SpriteRenderer>().sprite = chipSO.sprite;
-
+                        chipSO = levelSO.chipList[chips[counter].chipType];
+                        chips[counter].GO = Instantiate(chipPrefab, position, Quaternion.identity);
+                        chips[counter].GO.name = "Chip" + counter;
+                        chips[counter].GO.GetComponent<SpriteRenderer>().sprite = chipSO.sprite;
                     counter++;
                 }
             }
     }
+
 
     public void DisplayLightning(int x, int y)
     {
@@ -100,31 +94,24 @@ public class Visual : MonoBehaviour, IVisual
 
 
 
-    public void SwapChips(Chip[] chips, int highlightedChip, int chipIndex, bool doCheck)
+    public void SwapChips(Chip[] chips, int highlightedChip, int chipIndex, bool doCheck, bool quickly)
     {
-        StopAllCoroutines();
         Vector3 target1Position = chips[highlightedChip].GO.GetComponent<Transform>().position;
         Vector3 target2Position = chips[chipIndex].GO.GetComponent<Transform>().position;
-        StartCoroutine(MoveChip(chips[highlightedChip].GO.GetComponent<Transform>(), target2Position, false));
-        StartCoroutine(MoveChip(chips[chipIndex].GO.GetComponent<Transform>(), target1Position, doCheck));
 
-        chipsTest = chips;
+        if (quickly)
+        {
+            chips[highlightedChip].GO.GetComponent<Transform>().position = target2Position;
+            chips[chipIndex].GO.GetComponent<Transform>().position = target1Position;
+        }
+        else
+        {
+            StartCoroutine(MoveChip(chips[highlightedChip].GO.GetComponent<Transform>(), target2Position, false));
+            StartCoroutine(MoveChip(chips[chipIndex].GO.GetComponent<Transform>(), target1Position, doCheck));
+        }
+
     }
 
-    /*
-    public void Update()
-    {
-        for (int i = 0; i < chipsTest.Length; i++)
-        {
-            if (chipsTest[i].GO)
-            {
-                string s = i.ToString() + "*" + chipsTest[i].chipType.ToString();
-                chipsTest[i].GO.GetComponentInChildren<TextMesh>().text = s;
-
-
-            }
-        }
-    }*/
 
     public void MoveChip(Chip[] chips, int chipIndex, int x, int y, bool invoke)  // двигаем фишку chips[chipIndex].y на позицию x, y
     {
@@ -132,7 +119,6 @@ public class Visual : MonoBehaviour, IVisual
 
         StartCoroutine(MoveChip(chips[chipIndex].GO.GetComponent<Transform>(), targetPosition, invoke));      // true нужен только на последей фишке
 
-        chipsTest = chips;
     }
 
 
@@ -183,7 +169,6 @@ public class Visual : MonoBehaviour, IVisual
             }
         }
 
-        chipsTest = chips;
     }
 
 

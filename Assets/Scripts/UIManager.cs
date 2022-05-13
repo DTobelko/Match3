@@ -1,5 +1,4 @@
 ﻿using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -9,12 +8,14 @@ public class UIManager : MonoBehaviour
 
     [SerializeField] private Text ScoreText;
 
+    [SerializeField] private GameObject NotificationPanel;
 
-    private void Awake()
+
+    private void Start()
     {
- 
-        gameManager.ScoreEvent.AddListener(OnScoreChanged);
-
+         gameManager.ScoreEvent.AddListener(OnScoreChanged);
+        gameManager.NoPossibleMove.AddListener(OnNoPossibleMove);
+        gameManager.MixForMoveDone.AddListener(OnMixForMoveDone);
     }
 
     private void OnScoreChanged(int score)
@@ -22,5 +23,21 @@ public class UIManager : MonoBehaviour
         ScoreText.text = score.ToString();
     }
 
+    private void OnNoPossibleMove()
+    {
+        NotificationPanel.SetActive(true);
+    }
+
+
+    private void OnMixForMoveDone()
+    {
+        StartCoroutine(ShowNotification());
+    }
+
+    private IEnumerator ShowNotification()
+    {
+        yield return new WaitForSeconds(1);
+        NotificationPanel.SetActive(false);
+    }
 
 }

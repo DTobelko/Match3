@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-
+﻿using UnityEngine;
+using UnityEngine.Events;
 
 public class GameManager : MonoBehaviour
 {
@@ -25,6 +22,7 @@ public class GameManager : MonoBehaviour
     private int Score;
 
     public IntScoreEvent ScoreEvent;
+    public UnityEvent NoPossibleMove, MixForMoveDone;
 
     GameState currentGameState;
 
@@ -38,11 +36,14 @@ public class GameManager : MonoBehaviour
         gameplayManager.FieldReady.AddListener(FieldReady);
         gameplayManager.MoveStarted.AddListener(MoveStarted);
         gameplayManager.MoveFinished.AddListener(MoveFinished);
+        gameplayManager.NoPossibleMove.AddListener(OnNoPossibleMove);
+        gameplayManager.MixForMoveDone.AddListener(OnMixForMoveDone);
 
-        if (ScoreEvent == null)
-            ScoreEvent = new IntScoreEvent();
+        ScoreEvent = new IntScoreEvent();
 
-
+        NoPossibleMove = new UnityEvent();
+        MixForMoveDone = new UnityEvent();
+     
     }
 
     void Start()
@@ -85,19 +86,26 @@ public class GameManager : MonoBehaviour
     private void FieldReady()
     {
         currentGameState = GameState.IDLE;
-        Debug.Log("field ready IDLE");
     }
 
     private void MoveStarted()
     {
         currentGameState = GameState.PROCESSING;
-        Debug.Log("PROCESSING");
     }
 
     private void MoveFinished()
     {
         currentGameState = GameState.IDLE;
-        Debug.Log("Idle");
+    }
+
+    private void OnNoPossibleMove()
+    {
+        NoPossibleMove?.Invoke();
+    }
+
+    private void OnMixForMoveDone()
+    {
+        MixForMoveDone?.Invoke();
     }
 
 }
